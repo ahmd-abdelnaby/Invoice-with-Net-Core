@@ -1,0 +1,299 @@
+﻿@model DynamicsLink.Models.Invoice
+@{
+    ViewData["Title"] = "NewInvoice";
+}
+<br />
+<div class="row container">
+    <div class="col-sm-6">Inovice No:<span id="InvoiceID">@ViewBag.InvoiceID</span></div>
+    <div class="col-sm-6">Inovice Date @DateTime.Today</div>
+</div>
+<br />
+<div class="row container">
+    <div class="form-group col-sm-6">
+        <label class="control-label">Store</label>
+        <select id="state-target" asp-items="ViewBag.StoreID">
+            <option selected></option>
+        </select>
+    </div>
+</div>
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+<form>
+    
+    <div class="row">
+        <div class="col-sm-10">
+            <table id="myTable" class="table">
+                <tbody>
+                    <tr>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Item)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Unit)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Price)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Qty)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Total)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Discount)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Net)
+                        </th>
+                        <th></th>
+                    </tr>
+
+                    <tr>
+                        <td>
+                            <div class="form-group">
+                                <label asp-for="Item" class="control-label"></label>
+                                <select style="width:auto" id="items" asp-for="ItemID" class="form-control"></select>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <label asp-for="Unit" class="control-label"></label>
+                                <select style="width:auto" id="units" asp-for="UnitID" class="form-control"></select>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <label asp-for="Price" class="control-label"></label>
+                                <input id="Price" asp-for="Price" disabled class="form-control" />
+                                <span asp-validation-for="Price" class="text-danger"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <label asp-for="Qty" class="control-label"></label>
+                                <input id="Qty" asp-for="Qty" class="form-control" />
+                                <span asp-validation-for="Qty" class="text-danger"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <label asp-for="Total" class="control-label"></label>
+                                <input id="Total" asp-for="Total" disabled class="form-control" />
+                                <span asp-validation-for="Total" class="text-danger"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <label asp-for="Discount" class="control-label"></label>%
+                                <input id="Discount" asp-for="Discount" disabled value="5" class="form-control" />
+                                <span asp-validation-for="Discount" class="text-danger"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-group">
+                                <label asp-for="Net" class="control-label"></label>
+                                <input id="Net" asp-for="Net" disabled class="form-control" />
+                                <span asp-validation-for="Net" class="text-danger"></span>
+                            </div>
+                        </td>
+                        <td>
+                            <label class="control-label">Add</label>
+                            <div class="form-group">
+                                <button id="add" type="button" value="Add" class="btn btn-primary">Add</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-sm-2">
+
+        </div>
+    </div>
+</form>
+@using (Html.BeginForm(null, null, FormMethod.Post, new { id = "__AjaxAntiForgeryForm" }))
+{
+    @Html.AntiForgeryToken()
+}
+<div class="row">
+    <div class="col-sm-6"></div>
+    <div class="col-sm-6">
+        <div>
+        <h4>Total:<span id="TotalAll"></span></h4>
+        </div>
+        <div>
+        <h4 id="TaxesAll">Taxes:14%</h4>
+        </div>
+        <div>
+        <h4 >Net:<span id="NetAll"></span></h4>
+        </div>
+    </div>
+</div>
+<a id="saveAll" class="btn btn-primary">Save</a>
+@section Scripts
+{
+    <script>
+        var invoice = [];
+        var prices = [];
+        var TotalAll= 0;
+        var TaxesAll= 14;
+        var NetAll= 0;
+        $(document).ready(function () {
+            $("#state-target").on("change", function () {
+                $list = $("#items");
+                $.ajax({
+                    url:"@Url.Action("StoreChanged", "Invoices")",
+                    type: "GET",
+                    data: { id: $("#state-target").val() }, //id of the state which is used to extract cities
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (result) {
+                        console.log(result);
+                        $list.empty();
+                        $list.append('<option slected></option>');
+                        $.each(result, function (i, item) {
+                            $list.append('<option value="' + item["id"] + '"> ' + item["name"] + ' </option>');
+                            var price = { id: item["id"], price: item["price"] };
+                            prices[item["id"]] = item["price"];
+                        });
+
+                    },
+                    error: function (request, error) {
+                        alert("Request: " + JSON.stringify(request));
+                    }
+                });
+            });
+
+            $("#items").on("change", function () {
+                $('#Price').val(prices[$('#items').val()]);
+                $list = $("#units");
+                $.ajax({
+                    url:"@Url.Action("ItemChanged", "Invoices")",
+                    type: "GET",
+                    data: { id: $("#items").val() }, //id of the state which is used to extract cities
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (result) {
+
+                        $list.empty();
+                        $list.append('<option slected></option>');
+                        $.each(result, function (i, item) {
+                            $list.append('<option value="' + item["id"] + '"> ' + item["name"] + ' </option>');
+                        });
+
+                    },
+                    error: function (request, error) {
+                        alert("Request: " + JSON.stringify(request));
+                    }
+                });
+            });
+            $('#Qty').on("change", function () {
+                $('#Total').val($('#Price').val() * $('#Qty').val());
+                $('#Net').val($('#Total').val() - $('#Total').val() / $('#Discount').val());
+            });
+
+            $('#add').on("click", function () {
+                $('#myTable tr:last').before('<tr><td>' + $('#items option:selected').html() + '</td><td>'
+                + $('#units option:selected').html() + '</td><td>' + $('#Price').val() + '</td><td>'
+                + $('#Qty').val() + '</td><td>' + $('#Total').val()
+                    + '</td><td>' + $('#Discount').val() + '</td><td>' + $('#Net').val() + '</td></tr>');
+                var form = $('#__AjaxAntiForgeryForm');
+                var token = $('input[name="__RequestVerificationToken"]', form).val();
+
+                var data = {
+                    __RequestVerificationToken: token,
+                    itemID: $("#items").val(),
+                    UnitID: $("#units").val(),
+                    price: $('#Price').val(),
+                    qty: $('#Qty').val(),
+                    Total: $('#Total').val(),
+                    Discount: $('#Discount').val(),
+                    Net: $('#Net').val(),
+                    InvoicesContainerID: $('#InvoiceID').html()
+                };
+
+                invoice.push(data)
+                console.log(invoice);
+                TotalAll = TotalAll + parseInt($('#Total').val());
+                $('#TotalAll').html(TotalAll);
+                $('#NetAll').html(Math.round(TotalAll - TotalAll / TaxesAll));
+            $.ajax({
+                url: '/Invoices/Create',
+                type: 'POST',
+                data: {
+                    __RequestVerificationToken: token,
+                    itemID: $("#items").val(),
+                    UnitID: $("#units").val(),
+                    price: $('#Price').val(),
+                    qty: $('#Qty').val(),
+                    Total: $('#Total').val(),
+                    Discount: $('#Discount').val(),
+                    Net: $('#Net').val(),
+                    InoviceContainerNo: $('#InvoiceID').html()
+                    },
+                success: function (data) {
+                    console.log(data.success);
+                },
+                error: function () {
+                    console.log("error");
+                }
+                });
+            });
+            jQuery.ajaxSettings.traditional = true;
+            $('#saveAll').on("click", function () {
+                var No = $('#InvoiceID').html();
+                $.ajax({
+                    url: '/Invoices/CreateContainer',
+                    type: 'POST',
+                    data: {
+                        No: No,
+                        Total: TotalAll,
+                        Taxes: TaxesAll,
+                        Net: NetAll
+                            },
+                    success: function (data) {
+                        alert("Done");
+                        },
+                        error: function () {
+                            console.log("error");
+                        }
+                    });
+               
+            });
+
+        });
+        @*function newInvoice() {
+
+            $('#myTable tr:last').before('<tr><td>' + $('#items option:selected').html() + '</td><td>'
+                + $('#units option:selected').html() + '</td><td>' + $('#Price').val() + '</td><td>'
+                + $('#Qty').val() + '</td><td>' + $('#Total').val()
+                + '</td><td>' + $('#Discount').val() + '</td><td>' + $('#Net').val() + '</td></tr>');
+
+            $.ajax({
+                    url: "@Url.Action("Create", "Invoices")",
+                    method: "POST",
+                    data: {
+                    ItemID: $("#items").val(),
+                    UnitID: $("#units").val(),
+                    Price: $('#Price').val(),
+                    Qty: $('#Qty').val(),
+                    Total: $('#Total').val(),
+                    Discount: $('#Discount').val(),
+                    Net: $('#Net').val()
+                      },
+                    //contentType: "application/json; charset=utf-8",
+                    //dataType: "json",
+                    success: function (result) {
+                    },
+                error: function (request, error) {
+                    console.log("Request: " + JSON.stringify(request));
+                    }
+                });
+        };*@
+    </script>
+}
+
+
+
+
